@@ -1,0 +1,4 @@
+# How big should the detection area be?
+xLength: 24.0
+yLength: 24.0
+zLength: 24.0

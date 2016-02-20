@@ -1,0 +1,12 @@
+name: RedstoneClockDetector
+main: com.gmail.tracebachi.RedstoneClockDetector.Main
+version: 1.0
+author: Trace Bachi (tracebachi@gmail.com, BigBossZee)
+commands:
+  rcd:
+    description: Main command for RedstoneClockDetector.
+    usage: '/rcd <start|tp|list|reload>'
+permissions:
+  rcd:
+    description: Gives access to the RCD command and messages.
+    default: op
