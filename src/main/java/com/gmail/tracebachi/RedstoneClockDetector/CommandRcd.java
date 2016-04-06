@@ -2,6 +2,7 @@ package com.gmail.tracebachi.RedstoneClockDetector;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -13,6 +14,7 @@ import org.bukkit.event.block.BlockRedstoneEvent;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 
 import static org.bukkit.ChatColor.*;
@@ -24,7 +26,7 @@ public class CommandRcd implements CommandExecutor, Listener
 {
     private boolean listenerEnabled;
     private int taskId = -1;
-    private List<AreaCounter> counterList = new ArrayList<>(1024);
+    private HashMap<String, List<AreaCounter>> counterListMap = new HashMap<>(3);
     private Main plugin;
 
     public CommandRcd(Main plugin)
@@ -40,8 +42,8 @@ public class CommandRcd implements CommandExecutor, Listener
         plugin.getCommand("rcd").setExecutor(null);
         HandlerList.unregisterAll(this);
 
-        counterList.clear();
-        counterList = null;
+        counterListMap.clear();
+        counterListMap = null;
         plugin = null;
     }
 
@@ -51,6 +53,15 @@ public class CommandRcd implements CommandExecutor, Listener
         if(listenerEnabled)
         {
             Location location = event.getBlock().getLocation();
+            World world = location.getWorld();
+            List<AreaCounter> counterList = counterListMap.get(world.getName());
+
+            if(counterList == null)
+            {
+                counterList = new ArrayList<>(512);
+                counterListMap.put(world.getName(), counterList);
+            }
+
             AreaCounter counter = new AreaCounter(location.getX(), location.getY(), location.getZ());
             int counterIndex = counterList.indexOf(counter);
 
@@ -94,19 +105,38 @@ public class CommandRcd implements CommandExecutor, Listener
                 return true;
             }
 
+            Player player = (Player) sender;
             Integer number = parseInt(args[1]);
+            World world = player.getWorld();
 
-            if(number == null || number < 1)
+            if(args.length >= 3)
             {
-                sender.sendMessage(RED + "Invalid list number: " + args[1]);
+                world = Bukkit.getWorld(args[2]);
+
+                if(world == null)
+                {
+                    sender.sendMessage(RED + args[2] + " is not a valid world.");
+                    return true;
+                }
+            }
+
+            List<AreaCounter> counterList = counterListMap.getOrDefault(world.getName(), Collections.emptyList());
+
+            if(counterList.isEmpty())
+            {
+                player.sendMessage(RED + "There are no redstone areas to teleport to in " + WHITE + world.getName());
+            }
+            else if(number == null || number < 1)
+            {
+                player.sendMessage(RED + "Invalid list number: " + args[1]);
             }
             else if(number > counterList.size())
             {
-                sender.sendMessage(RED + "Number must be between 1 ~ " + Math.max(1, counterList.size()));
+                player.sendMessage(RED + "Number must be between 1 ~ " + Math.max(1, counterList.size()));
             }
             else
             {
-                handleTp((Player) sender, number);
+                handleTp(player, world, counterList, number);
             }
         }
         else if(args.length >= 1 && args[0].equalsIgnoreCase("list"))
@@ -124,7 +154,12 @@ public class CommandRcd implements CommandExecutor, Listener
                 }
             }
 
-            handleList(sender, displaySize);
+            sender.sendMessage(GREEN + "Displaying RCD list for all worlds ...");
+
+            for(String key : counterListMap.keySet())
+            {
+                handleList(sender, key, displaySize);
+            }
         }
         else if(args.length >= 1 && args[0].equalsIgnoreCase("reload"))
         {
@@ -133,7 +168,7 @@ public class CommandRcd implements CommandExecutor, Listener
         else
         {
             sender.sendMessage(GRAY + "/rcd start <time in ticks>");
-            sender.sendMessage(GRAY + "/rcd tp <number on list>");
+            sender.sendMessage(GRAY + "/rcd tp <number on list> [world]");
             sender.sendMessage(GRAY + "/rcd list [display size]");
             sender.sendMessage(GRAY + "/rcd reload");
         }
@@ -147,7 +182,7 @@ public class CommandRcd implements CommandExecutor, Listener
             plugin.getServer().getScheduler().cancelTask(taskId);
         }
 
-        counterList.clear();
+        counterListMap.clear();
         listenerEnabled = true;
 
         Bukkit.broadcast(GREEN + "RCD enabled for " + ticks + " ticks.", "rcd");
@@ -159,11 +194,13 @@ public class CommandRcd implements CommandExecutor, Listener
         }, ticks).getTaskId();
     }
 
-    private void handleList(CommandSender sender, int displaySize)
+    private void handleList(CommandSender sender, String worldName, int displaySize)
     {
+        List<AreaCounter> counterList = counterListMap.getOrDefault(worldName, Collections.emptyList());
+
         Collections.sort(counterList, (o1, o2) -> o2.getCount() - o1.getCount());
 
-        sender.sendMessage(GREEN + "Report for redstone events:");
+        sender.sendMessage(GREEN + "Report for redstone events on " + WHITE + worldName + GREEN + ":");
 
         for(int i = 0; i < displaySize && i < counterList.size(); i++)
         {
@@ -173,12 +210,12 @@ public class CommandRcd implements CommandExecutor, Listener
         }
     }
 
-    private void handleTp(Player sender, int number)
+    private void handleTp(Player sender, World world, List<AreaCounter> counterList, int number)
     {
         AreaCounter counter = counterList.get(number - 1);
-        Location location = counter.getLocation(sender.getWorld());
+        Location location = counter.getLocation(world);
 
-        sender.sendMessage(GREEN + "Teleporting to #" + number);
+        sender.sendMessage(GREEN + "Teleporting to #" + number + " in " + WHITE + world.getName());
         sender.teleport(location);
     }
 
