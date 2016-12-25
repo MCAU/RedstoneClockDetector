@@ -1,6 +1,6 @@
 name: RedstoneClockDetector
 main: com.gmail.tracebachi.RedstoneClockDetector.RedstoneClockDetector
-version: 1.1
+version: ${project.version}
 author: Trace Bachi (tracebachi@gmail.com, BigBossZee)
 commands:
   rcd:
