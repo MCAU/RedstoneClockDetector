@@ -49,9 +49,9 @@ public class AreaCounter
         {
             AreaCounter other = (AreaCounter) obj;
 
-            return Math.abs(x - other.x) <= Main.xLength() &&
-                Math.abs(y - other.y) <= Main.yLength() &&
-                Math.abs(z - other.z) <= Main.zLength();
+            return Math.abs(x - other.x) <= RedstoneClockDetector.xLength() &&
+                Math.abs(y - other.y) <= RedstoneClockDetector.yLength() &&
+                Math.abs(z - other.z) <= RedstoneClockDetector.zLength();
         }
         return false;
     }

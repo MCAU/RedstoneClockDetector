@@ -5,11 +5,12 @@ import org.bukkit.plugin.java.JavaPlugin;
 /**
  * Created by Trace Bachi (tracebachi@gmail.com, BigBossZee) on 2/14/16.
  */
-public class Main extends JavaPlugin
+public class RedstoneClockDetector extends JavaPlugin
 {
     private static double xLength;
     private static double yLength;
     private static double zLength;
+    private static boolean broadcastRcdStartAndEnd = true;
 
     private CommandRcd commandRcd;
 
@@ -39,6 +40,7 @@ public class Main extends JavaPlugin
         xLength = getConfig().getDouble("xLength", 24.0D);
         yLength = getConfig().getDouble("yLength", 24.0D);
         zLength = getConfig().getDouble("zLength", 24.0D);
+        broadcastRcdStartAndEnd = getConfig().getBoolean("BroadcastRcdStartAndEnd", true);
     }
 
     public static double xLength()
@@ -54,5 +56,10 @@ public class Main extends JavaPlugin
     public static double zLength()
     {
         return zLength;
+    }
+
+    public static boolean shouldBroadcastRcdStart()
+    {
+        return broadcastRcdStartAndEnd;
     }
 }

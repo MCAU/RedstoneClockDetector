@@ -27,9 +27,9 @@ public class CommandRcd implements CommandExecutor, Listener
     private boolean listenerEnabled;
     private int taskId = -1;
     private HashMap<String, List<AreaCounter>> counterListMap = new HashMap<>(3);
-    private Main plugin;
+    private RedstoneClockDetector plugin;
 
-    public CommandRcd(Main plugin)
+    public CommandRcd(RedstoneClockDetector plugin)
     {
         this.plugin = plugin;
 
@@ -42,6 +42,7 @@ public class CommandRcd implements CommandExecutor, Listener
         plugin.getCommand("rcd").setExecutor(null);
         HandlerList.unregisterAll(this);
 
+        listenerEnabled = false;
         counterListMap.clear();
         counterListMap = null;
         plugin = null;
@@ -80,28 +81,27 @@ public class CommandRcd implements CommandExecutor, Listener
     {
         if(!sender.hasPermission("rcd"))
         {
-            sender.sendMessage(RED + "You do not have permission to use RedstoneClockDetector.");
+            sender.sendMessage(RED + "You do not have permission to use RedstoneClockDetector");
             return true;
         }
 
         if(args.length >= 2 && args[0].equalsIgnoreCase("start"))
         {
             Integer ticks = parseInt(args[1]);
-
             if(ticks == null || ticks < 1)
             {
                 sender.sendMessage(RED + "Invalid tick amount: " + args[1]);
             }
             else
             {
-                handleStart(ticks);
+                handleStart(sender, ticks);
             }
         }
         else if(args.length >= 2 && args[0].equalsIgnoreCase("tp"))
         {
             if(!(sender instanceof Player))
             {
-                sender.sendMessage(RED + "RCD teleport is only available for players.");
+                sender.sendMessage(RED + "RCD teleport is only available for players");
                 return true;
             }
 
@@ -112,19 +112,21 @@ public class CommandRcd implements CommandExecutor, Listener
             if(args.length >= 3)
             {
                 world = Bukkit.getWorld(args[2]);
-
                 if(world == null)
                 {
-                    sender.sendMessage(RED + args[2] + " is not a valid world.");
+                    sender.sendMessage(RED + args[2] + " is not a valid world");
                     return true;
                 }
             }
 
-            List<AreaCounter> counterList = counterListMap.getOrDefault(world.getName(), Collections.emptyList());
+            List<AreaCounter> counterList = counterListMap.getOrDefault(
+                world.getName(),
+                Collections.emptyList());
 
             if(counterList.isEmpty())
             {
-                player.sendMessage(RED + "There are no redstone areas to teleport to in " + WHITE + world.getName());
+                player.sendMessage(RED + "There are no redstone areas to teleport to in " +
+                    WHITE + world.getName());
             }
             else if(number == null || number < 1)
             {
@@ -132,7 +134,8 @@ public class CommandRcd implements CommandExecutor, Listener
             }
             else if(number > counterList.size())
             {
-                player.sendMessage(RED + "Number must be between 1 ~ " + Math.max(1, counterList.size()));
+                player.sendMessage(RED + "Number must be between 1 ~ " +
+                    Math.max(1, counterList.size()));
             }
             else
             {
@@ -175,7 +178,7 @@ public class CommandRcd implements CommandExecutor, Listener
         return true;
     }
 
-    private void handleStart(int ticks)
+    private void handleStart(CommandSender sender, int ticks)
     {
         if(taskId != -1)
         {
@@ -185,22 +188,53 @@ public class CommandRcd implements CommandExecutor, Listener
         counterListMap.clear();
         listenerEnabled = true;
 
-        Bukkit.broadcast(GREEN + "RCD enabled for " + ticks + " ticks.", "rcd");
+        String startMessage = GREEN + "RCD enabled for " + ticks + " ticks";
+        if(RedstoneClockDetector.shouldBroadcastRcdStart())
+        {
+            Bukkit.broadcast(startMessage, "rcd");
+        }
+        else
+        {
+            sender.sendMessage(startMessage);
+        }
 
+        String senderName = sender.getName();
+        String completionMessage = GREEN + "RCD sample of " + ticks + " ticks complete.";
         taskId = Bukkit.getScheduler().runTaskLater(plugin, () ->
         {
             listenerEnabled = false;
-            Bukkit.broadcast(GREEN + "RCD sample of " + ticks + " ticks complete.", "rcd");
+
+            if(RedstoneClockDetector.shouldBroadcastRcdStart())
+            {
+                Bukkit.broadcast(completionMessage, "rcd");
+                return;
+            }
+
+            if(senderName.equalsIgnoreCase("console"))
+            {
+                Bukkit.getConsoleSender().sendMessage(completionMessage);
+                return;
+            }
+
+            Player player = Bukkit.getPlayerExact(senderName);
+            if(player != null)
+            {
+                sender.sendMessage(completionMessage);
+            }
         }, ticks).getTaskId();
     }
 
     private void handleList(CommandSender sender, String worldName, int displaySize)
     {
-        List<AreaCounter> counterList = counterListMap.getOrDefault(worldName, Collections.emptyList());
+        List<AreaCounter> counterList = counterListMap.getOrDefault(
+            worldName,
+            Collections.emptyList());
 
         Collections.sort(counterList, (o1, o2) -> o2.getCount() - o1.getCount());
 
-        sender.sendMessage(GREEN + "Report for redstone events on " + WHITE + worldName + GREEN + ":");
+        sender.sendMessage(GREEN + "Report for # of redstone events on " +
+            WHITE + worldName +
+            GREEN + ":");
 
         for(int i = 0; i < displaySize && i < counterList.size(); i++)
         {
